@@ -2,88 +2,92 @@
 import { useState, useEffect } from "react";
 import { fetchMovies } from "../../redux/movieSlice";
 import { useDispatch, useSelector } from "react-redux";
-import Image from "next/image";
 
 export default function MovieApp() {
   const [search, setSearch] = useState("");
-
+  const [page, setPage] = useState(1);
   const dispatch = useDispatch();
 
-  const { movies, loading, error } = useSelector(
-    (state) => state.movies
-  );
+  const { movies, loading, error, totalResults } = useSelector((state) => state.movies);
+  
+  // OMDB returns 10 results per page
+  const totalPages = Math.ceil(totalResults / 10);
 
-  // 🔥 trending on load
+  // Trigger fetch on initial load and whenever page or search changes
   useEffect(() => {
-    dispatch(fetchMovies("avengers"));
-  }, [dispatch]);
+    // Use a timeout to debounce search so it doesn't fire on every keystroke
+    const delayDebounceFn = setTimeout(() => {
+      dispatch(fetchMovies({ searchTerm: search, page }));
+    }, 500);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [dispatch, search, page]);
 
   const handleChange = (e) => {
-    const value = e.target.value;
-    setSearch(value);
-    dispatch(fetchMovies(value));
+    setSearch(e.target.value);
+    setPage(1); // Reset to page 1 when searching
   };
 
-  // remove duplicates
-  const uniqueMovies = movies?.filter(
-    (movie, index, self) =>
-      index === self.findIndex((m) => m.imdbID === movie.imdbID)
-  );
-
-  // 🔥 sort by rating
-  const sortedMovies = uniqueMovies
-    ?.filter((movie) => movie.imdbRating !== "N/A")
-    ?.sort((a, b) => parseFloat(b.imdbRating) - parseFloat(a.imdbRating));
+  const nextPage = () => { if (page < totalPages) setPage(prev => prev + 1); };
+  const prevPage = () => { if (page > 1) setPage(prev => prev - 1); };
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-6">
-      {/* Search */}
-      <div className="mx-auto mb-8 flex  w-full justify-between items-center text-center">
-        <p className="lg:text-lg text-[10px] text-yellow-600 font-bold" >MovieBox </p>
+      {/* Search Header */}
+      <div className="mx-auto mb-8 flex w-full justify-between items-center">
+        <p className="text-yellow-600 font-bold">MovieBox</p>
         <input
           type="text"
           placeholder="Search movies..."
           value={search}
           onChange={handleChange}
-          className="w-[40%] p-3 rounded-xl text-[10px] lg:text-lg bg-gray-800 border border-gray-700"
+          className="w-[40%] p-3 rounded-xl bg-gray-800 border border-gray-700"
         />
-        <p className="lg:text-lg text-[10px] font-semibold cursor-not-allowed hover:blur-[1px] " >Login</p>
-        {/* <Image scr={"/vercel.svg"} height={50} width={50} className={"border border-black"} /> */}
+        <p className="cursor-pointer">Login</p>
       </div>
 
       {loading && <p className="text-center">Loading...</p>}
-      {error && <p className="text-center">{error}</p>}
+      {error && <p className="text-center text-red-500">{error}</p>}
 
-      {/* Movies */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        {sortedMovies?.map((movie, index) => (
-          <div
-            key={`${movie.imdbID}-${index}`}
-            className="bg-gray-800 rounded-2xl overflow-hidden"
-          >
-            <img
-              src={movie.Poster}
-              alt={movie.Title}
-              className="w-full h-72 object-cover"
+      {/* Movies Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+        {!loading && movies.map((movie) => (
+          <div key={movie.imdbID} className="bg-gray-800 rounded-2xl overflow-hidden hover:scale-105 transition-transform">
+            <img 
+              src={movie.Poster !== "N/A" ? movie.Poster : "https://via.placeholder.com/300x450?text=No+Poster"} 
+              alt={movie.Title} 
+              className="w-full h-72 object-cover" 
             />
-
             <div className="p-4">
-              <h2 className="text-lg font-semibold">
-                {movie.Title}
-              </h2>
-
-              <p className="text-gray-400">{movie.Genre}</p>
-
-              <span className="text-yellow-400 font-bold">
-                ⭐ {movie.imdbRating}
-              </span>
+              <h2 className="text-lg font-semibold truncate">{movie.Title}</h2>
+              <p className="text-gray-400 text-sm">{movie.Genre?.split(',')[0]}</p>
+              <span className="text-yellow-400 font-bold">⭐ {movie.imdbRating}</span>
             </div>
           </div>
         ))}
       </div>
 
-      {!loading && sortedMovies?.length === 0 && (
-        <p className="text-center mt-10">No movies found...</p>
+      {/* Pagination Controls */}
+      {!loading && totalPages > 1 && (
+        <div className="flex justify-center items-center mt-10 gap-6">
+          <button
+            onClick={prevPage}
+            disabled={page === 1}
+            className="px-6 py-2 bg-yellow-600 rounded-lg disabled:opacity-30 font-bold"
+          >
+            Prev
+          </button>
+          <span className="font-medium">
+            Page {page} of {totalPages}
+          </span>
+          <button
+            onClick={nextPage}
+            disabled={page === totalPages}
+            className="px-6 py-2 bg-yellow-600 rounded-lg disabled:opacity-30 font-bold"
+          >
+            Next
+          </button>
+        </div>
       )}
     </div>
   );

@@ -1,33 +1,23 @@
-// src/redux/movieSlice.js
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-
 
 const API_KEY = "4d23298b";
 
-// Fetch movies from API
-// export const fetchMovies = createAsyncThunk(
-//   "movies/fetchMovies",
-//   async (searchTerm) => {
-//     const res = await fetch(
-//       `https://www.omdbapi.com/?apikey=${API_KEY}&s=${searchTerm}`
-//     );
-
-//     const data = await res.json();
-//     return data.Search; // array of movies
-//   }
-// );
-
-
-
 export const fetchMovies = createAsyncThunk(
   "movies/fetchMovies",
-  async (search) => {
+  async ({ searchTerm, page = 1 }) => {
+    // If no search term, we use a default one to show movies on load
+    const query = searchTerm.trim() === "" ? "movie" : searchTerm;
+    
     const res = await fetch(
-      `https://www.omdbapi.com/?apikey=${API_KEY}&s=${search}`
+      `https://www.omdbapi.com/?apikey=${API_KEY}&s=${query}&page=${page}`
     );
     const data = await res.json();
 
-    // 🔥 fetch full details (includes imdbRating)
+    if (data.Response === "False") {
+      throw new Error(data.Error || "No results found");
+    }
+
+    // Fetch full details for each movie to get the Rating/Genre
     const detailedMovies = await Promise.all(
       (data.Search || []).map(async (movie) => {
         const res2 = await fetch(
@@ -37,11 +27,12 @@ export const fetchMovies = createAsyncThunk(
       })
     );
 
-    return detailedMovies;
+    return { 
+      movies: detailedMovies, 
+      totalResults: parseInt(data.totalResults) || 0 
+    };
   }
 );
-
-
 
 const movieSlice = createSlice({
   name: "movies",
@@ -49,23 +40,32 @@ const movieSlice = createSlice({
     movies: [],
     loading: false,
     error: null,
+    totalResults: 0,
   },
-  reducers: {},
-
+  reducers: {
+    clearMovies: (state) => {
+      state.movies = [];
+    }
+  },
   extraReducers: (builder) => {
     builder
       .addCase(fetchMovies.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
       .addCase(fetchMovies.fulfilled, (state, action) => {
         state.loading = false;
-        state.movies = action.payload;
+        state.movies = action.payload.movies;
+        state.totalResults = action.payload.totalResults;
       })
-      .addCase(fetchMovies.rejected, (state) => {
+      .addCase(fetchMovies.rejected, (state, action) => {
         state.loading = false;
-        state.error = "Failed to fetch movies";
+        state.error = action.error.message;
+        state.movies = [];
+        state.totalResults = 0;
       });
   },
 });
 
+export const { clearMovies } = movieSlice.actions;
 export default movieSlice.reducer;
