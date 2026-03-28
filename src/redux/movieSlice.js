@@ -55,14 +55,16 @@ const movieSlice = createSlice({
       })
       .addCase(fetchMovies.fulfilled, (state, action) => {
         state.loading = false;
-        state.movies = action.payload.movies;
-        state.totalResults = action.payload.totalResults;
 
-        // const uniqueMovies = array.from(
-        //   new map(action.payload.movies(movie => [movie.imdbID, movie])).values()
-        // );
-        // state.movies = uniqueMovies ;
-        // state.totalResults = action.payload.totalResults
+        const rawMovies = action.payload.movies
+        
+        const uniqueMovies = Array.from(
+          new Map(rawMovies.map((movie) => [movie.imdbID, movie])).values()
+        );
+
+        state.movies = uniqueMovies;
+        state.totalResults = action.payload.totalResults;
+        state.error = null
       })
       .addCase(fetchMovies.rejected, (state, action) => {
         state.loading = false;

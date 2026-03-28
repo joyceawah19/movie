@@ -15,6 +15,11 @@ export default function MovieApp() {
 
   // Trigger fetch on initial load and whenever page or search changes
   useEffect(() => {
+    if (search.trim() == "") {
+      dispatch(fetchMovies({searchTerm:"movie", page}));
+      return;
+    }
+    if (search.trim().length < 3) return;
     // Use a timeout to debounce search so it doesn't fire on every keystroke
     const delayDebounceFn = setTimeout(() => {
       dispatch(fetchMovies({ searchTerm: search, page }));
