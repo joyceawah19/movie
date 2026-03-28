@@ -43,7 +43,7 @@ export default function MovieApp() {
           onChange={handleChange}
           className="w-[40%] p-3 rounded-xl bg-gray-800 border border-gray-700"
         />
-        <p className="cursor-pointer">Login</p>
+        <p className="cursor-not-allowed">Login</p>
       </div>
 
       {loading && <p className="text-center">Loading...</p>}

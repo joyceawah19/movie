@@ -57,6 +57,12 @@ const movieSlice = createSlice({
         state.loading = false;
         state.movies = action.payload.movies;
         state.totalResults = action.payload.totalResults;
+
+        // const uniqueMovies = array.from(
+        //   new map(action.payload.movies(movie => [movie.imdbID, movie])).values()
+        // );
+        // state.movies = uniqueMovies ;
+        // state.totalResults = action.payload.totalResults
       })
       .addCase(fetchMovies.rejected, (state, action) => {
         state.loading = false;
